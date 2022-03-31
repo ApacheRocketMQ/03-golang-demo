@@ -7,6 +7,7 @@ import (
 	"github.com/apache/rocketmq-client-go/v2/consumer"
 	"github.com/apache/rocketmq-client-go/v2/primitive"
 	"github.com/apache/rocketmq-client-go/v2/producer"
+	"os"
 	"strconv"
 	"sync"
 )
@@ -22,6 +23,10 @@ var maxMessageCount = 10
 var locker = sync.WaitGroup{}
 
 func main() {
+
+	if len(os.Args) > 0 {
+		nameSrv, _ = primitive.NewNamesrvAddr(os.Args[1])
+	}
 	locker.Add(maxMessageCount)
 
 	startOneProducer()
@@ -35,11 +40,11 @@ func startOneConsumer() {
 	c, _ := rocketmq.NewPushConsumer(
 		consumer.WithGroupName(consumerGroupName),
 		consumer.WithNameServer(nameSrv),
+		consumer.WithConsumeFromWhere(consumer.ConsumeFromLastOffset),
 	)
 
 	c.Subscribe(topic, consumer.MessageSelector{}, func(ctx context.Context, msgs ...*primitive.MessageExt) (consumer.ConsumeResult, error) {
 		for _, msg := range msgs {
-			locker.Done()
 			fmt.Println(fmt.Sprintf("[消费消息] %s , %s", msg.MsgId, string(msg.Body)))
 		}
 		return consumer.ConsumeSuccess, nil
